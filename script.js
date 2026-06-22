@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnHalf = document.getElementById('btn-half');
     const btnDouble = document.getElementById('btn-double');
     const actionBtn = document.getElementById('action-btn');
+    const btnGroupNormal = document.getElementById('btn-group-normal');
+    const btnGroupFlying = document.getElementById('btn-group-flying');
+    const btnCashoutHalf = document.getElementById('btn-cashout-half');
+    const btnCashoutFull = document.getElementById('btn-cashout-full');
     const currentProfitEl = document.getElementById('current-profit');
     const historyList = document.getElementById('history-list');
     
@@ -16,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentBet = 0;
     let betPlacedForNextRound = false;
     let isCashedOut = false;
+    let isHalfCashedOut = false;
     let currentBetId = null;
     
     // Round State
@@ -86,6 +91,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     actionBtn.addEventListener('click', handleAction);
     
+    btnCashoutHalf.addEventListener('click', () => {
+        if (betPlacedForNextRound && !isCashedOut && !isHalfCashedOut) {
+            cashOut(50);
+        }
+    });
+    
+    btnCashoutFull.addEventListener('click', () => {
+        if (betPlacedForNextRound && !isCashedOut) {
+            cashOut(100);
+        }
+    });
+    
     // --- Core Logic ---
     
     function generateCrashPoint() {
@@ -128,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentBetId = data.bet_id;
                         betPlacedForNextRound = true;
                         isCashedOut = false;
+                        isHalfCashedOut = false;
                         updateBalanceDisplay();
                         
                         actionBtn.textContent = 'BET PLACED';
@@ -147,26 +165,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     actionBtn.disabled = false;
                 }
             }
-        } else if (gameState === 'flying') {
-            if (betPlacedForNextRound && !isCashedOut) {
-                cashOut();
-            }
         }
     }
     
-    async function cashOut() {
+    async function cashOut(percent = 100) {
         if (!currentBetId) return;
         
-        isCashedOut = true;
-        const winnings = currentBet * currentMultiplier;
+        let winnings = 0;
+        let profit = 0;
         
-        // UI Updates instantly for responsiveness
-        currentProfitEl.textContent = `+$${(winnings - currentBet).toFixed(2)}`;
-        currentProfitEl.style.color = '#2ecc71';
-        
-        actionBtn.textContent = 'CASHED OUT';
-        actionBtn.className = 'btn-disabled';
-        actionBtn.disabled = true;
+        if (percent === 50) {
+            isHalfCashedOut = true;
+            winnings = (currentBet * 0.5) * currentMultiplier;
+            profit = winnings - (currentBet * 0.5);
+            
+            // UI Updates instantly for responsiveness
+            btnCashoutHalf.textContent = '50% CASHED OUT';
+            btnCashoutHalf.disabled = true;
+            btnCashoutHalf.className = 'btn-disabled';
+            
+            currentProfitEl.textContent = `+$${profit.toFixed(2)}`;
+            currentProfitEl.style.color = '#2ecc71';
+        } else {
+            isCashedOut = true;
+            winnings = currentBet * currentMultiplier;
+            profit = winnings - currentBet;
+            
+            // UI Updates instantly for responsiveness
+            btnCashoutHalf.disabled = true;
+            btnCashoutHalf.className = 'btn-disabled';
+            btnCashoutFull.textContent = 'CASHED OUT';
+            btnCashoutFull.disabled = true;
+            btnCashoutFull.className = 'btn-disabled';
+            
+            currentProfitEl.textContent = `+$${profit.toFixed(2)}`;
+            currentProfitEl.style.color = '#2ecc71';
+        }
         
         try {
             const res = await fetch(`${API_BASE}/cashout`, {
@@ -174,7 +208,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     bet_id: currentBetId,
-                    multiplier: currentMultiplier
+                    multiplier: currentMultiplier,
+                    percentage: percent
                 })
             });
             
@@ -182,6 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 balance = data.new_balance;
                 updateBalanceDisplay();
+                
+                if (percent === 50) {
+                    currentBetId = data.active_bet_id;
+                    currentBet = currentBet * 0.5;
+                }
             }
         } catch (e) {
             console.error("Failed to cashout on backend", e);
@@ -198,10 +238,23 @@ document.addEventListener('DOMContentLoaded', () => {
         betPlacedForNextRound = false;
         currentBetId = null;
         currentBet = 0;
+        isHalfCashedOut = false;
+        isCashedOut = false;
+        
+        btnGroupNormal.classList.remove('hidden');
+        btnGroupFlying.classList.add('hidden');
         
         actionBtn.textContent = 'PLACE BET';
         actionBtn.className = 'btn-primary';
         actionBtn.disabled = false;
+        
+        btnCashoutHalf.disabled = false;
+        btnCashoutHalf.className = 'btn-cashout-half';
+        btnCashoutHalf.textContent = 'CASH OUT 50%';
+        
+        btnCashoutFull.disabled = false;
+        btnCashoutFull.className = 'btn-cashout-full';
+        btnCashoutFull.textContent = 'CASH OUT';
         
         currentProfitEl.textContent = '$0.00';
         currentProfitEl.style.color = '#2ecc71';
@@ -230,10 +283,17 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMessageEl.textContent = 'Flying...';
         
         if (betPlacedForNextRound && !isCashedOut) {
-            actionBtn.textContent = 'CASH OUT';
-            actionBtn.className = 'btn-cashout';
-            actionBtn.disabled = false;
+            btnGroupNormal.classList.add('hidden');
+            btnGroupFlying.classList.remove('hidden');
+            btnCashoutHalf.disabled = false;
+            btnCashoutHalf.className = 'btn-cashout-half';
+            btnCashoutHalf.textContent = 'CASH OUT 50%';
+            btnCashoutFull.disabled = false;
+            btnCashoutFull.className = 'btn-cashout-full';
+            btnCashoutFull.textContent = 'CASH OUT';
         } else {
+            btnGroupNormal.classList.remove('hidden');
+            btnGroupFlying.classList.add('hidden');
             actionBtn.textContent = 'WAIT FOR NEXT ROUND';
             actionBtn.className = 'btn-disabled';
             actionBtn.disabled = true;
@@ -252,6 +312,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 multiplierEl.textContent = currentMultiplier.toFixed(2) + 'x';
                 
                 if (betPlacedForNextRound && !isCashedOut) {
+                    if (!isHalfCashedOut) {
+                        btnCashoutHalf.textContent = `CASH OUT 50% ($${(currentBet * 0.5 * currentMultiplier).toFixed(2)})`;
+                    }
+                    btnCashoutFull.textContent = `CASH OUT ($${(currentBet * currentMultiplier).toFixed(2)})`;
                     currentProfitEl.textContent = `+$${((currentBet * currentMultiplier) - currentBet).toFixed(2)}`;
                 }
                 
@@ -269,6 +333,9 @@ document.addEventListener('DOMContentLoaded', () => {
         multiplierEl.textContent = currentMultiplier.toFixed(2) + 'x';
         multiplierEl.classList.add('crashed');
         statusMessageEl.textContent = 'CRASHED!';
+        
+        btnGroupNormal.classList.remove('hidden');
+        btnGroupFlying.classList.add('hidden');
         
         actionBtn.textContent = 'WAIT FOR NEXT ROUND';
         actionBtn.className = 'btn-disabled';

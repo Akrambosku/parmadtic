@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnHalf = document.getElementById('btn-half');
     const btnDouble = document.getElementById('btn-double');
     const actionBtn = document.getElementById('action-btn');
+    const btnGroupNormal = document.getElementById('btn-group-normal');
+    const btnGroupFlying = document.getElementById('btn-group-flying');
+    const btnCashoutHalf = document.getElementById('btn-cashout-half');
+    const btnCashoutFull = document.getElementById('btn-cashout-full');
     const currentProfitEl = document.getElementById('current-profit');
     const historyList = document.getElementById('history-list');
 
@@ -15,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentBet = 0;
     let betPlacedForNextRound = false;
     let isCashedOut = false;
+    let isHalfCashedOut = false;
     let currentBetId = null;
 
     // Round State
@@ -84,6 +89,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     actionBtn.addEventListener('click', handleAction);
+ 
+    btnCashoutHalf.addEventListener('click', () => {
+        if (betPlacedForNextRound && !isCashedOut && !isHalfCashedOut) {
+            cashOut(50);
+        }
+    });
+ 
+    btnCashoutFull.addEventListener('click', () => {
+        if (betPlacedForNextRound && !isCashedOut) {
+            cashOut(100);
+        }
+    });
 
     // --- Core Logic ---
 
@@ -125,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentBetId = data.bet_id;
                         betPlacedForNextRound = true;
                         isCashedOut = false;
+                        isHalfCashedOut = false;
                         updateBalanceDisplay();
 
                         actionBtn.textContent = 'BET TERPASANG';
@@ -144,26 +162,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     actionBtn.disabled = false;
                 }
             }
-        } else if (gameState === 'flying') {
-            if (betPlacedForNextRound && !isCashedOut) {
-                cashOut();
-            }
         }
     }
 
-    async function cashOut() {
+    async function cashOut(percent = 100) {
         if (!currentBetId) return;
-
-        isCashedOut = true;
-        const winnings = currentBet * currentMultiplier;
-
-        currentProfitEl.textContent = `+$${(winnings - currentBet).toFixed(2)}`;
-        currentProfitEl.style.color = '#2ecc71';
-
-        actionBtn.textContent = 'CASHED OUT';
-        actionBtn.className = 'btn-disabled';
-        actionBtn.disabled = true;
-
+ 
+        let winnings = 0;
+        let profit = 0;
+ 
+        if (percent === 50) {
+            isHalfCashedOut = true;
+            winnings = (currentBet * 0.5) * currentMultiplier;
+            profit = winnings - (currentBet * 0.5);
+ 
+            btnCashoutHalf.textContent = '50% SUDAH DITARIK';
+            btnCashoutHalf.disabled = true;
+            btnCashoutHalf.className = 'btn-disabled';
+ 
+            currentProfitEl.textContent = `+$${profit.toFixed(2)}`;
+            currentProfitEl.style.color = '#2ecc71';
+        } else {
+            isCashedOut = true;
+            winnings = currentBet * currentMultiplier;
+            profit = winnings - currentBet;
+ 
+            btnCashoutHalf.disabled = true;
+            btnCashoutHalf.className = 'btn-disabled';
+            btnCashoutFull.textContent = 'SUDAH DITARIK';
+            btnCashoutFull.disabled = true;
+            btnCashoutFull.className = 'btn-disabled';
+ 
+            currentProfitEl.textContent = `+$${profit.toFixed(2)}`;
+            currentProfitEl.style.color = '#2ecc71';
+        }
+ 
         try {
             const res = await fetch(`${API_BASE}/api/cashout/`, {
                 method: 'POST',
@@ -173,14 +206,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify({
                     bet_id: currentBetId,
-                    multiplier: currentMultiplier
+                    multiplier: currentMultiplier,
+                    percentage: percent
                 })
             });
-
+ 
             const data = await res.json();
             if (res.ok) {
                 balance = data.new_balance;
                 updateBalanceDisplay();
+ 
+                if (percent === 50) {
+                    currentBetId = data.active_bet_id;
+                    currentBet = currentBet * 0.5;
+                }
             }
         } catch (e) {
             console.error("Failed to cashout on backend", e);
@@ -193,18 +232,31 @@ document.addEventListener('DOMContentLoaded', () => {
         multiplierEl.textContent = '1.00x';
         multiplierEl.classList.remove('crashed');
         statusMessageEl.textContent = 'Menunggu ronde berikutnya...';
-
+ 
         betPlacedForNextRound = false;
         currentBetId = null;
         currentBet = 0;
-
+        isHalfCashedOut = false;
+        isCashedOut = false;
+ 
+        btnGroupNormal.classList.remove('hidden');
+        btnGroupFlying.classList.add('hidden');
+ 
         actionBtn.textContent = 'PASANG BET';
         actionBtn.className = 'btn-primary';
         actionBtn.disabled = false;
-
+ 
+        btnCashoutHalf.disabled = false;
+        btnCashoutHalf.className = 'btn-cashout-half';
+        btnCashoutHalf.textContent = 'TARIK 50%';
+ 
+        btnCashoutFull.disabled = false;
+        btnCashoutFull.className = 'btn-cashout-full';
+        btnCashoutFull.textContent = 'TARIK FULL';
+ 
         currentProfitEl.textContent = '$0.00';
         currentProfitEl.style.color = '#2ecc71';
-
+ 
         let timeLeft = ROUND_DELAY / 1000;
         const countdownInterval = setInterval(() => {
             timeLeft--;
@@ -224,58 +276,72 @@ document.addEventListener('DOMContentLoaded', () => {
         crashPoint = generateCrashPoint();
         currentMultiplier = 1.00;
         startTime = performance.now();
-
+ 
         statusMessageEl.textContent = 'Terbang...';
-
+ 
         if (betPlacedForNextRound && !isCashedOut) {
-            actionBtn.textContent = 'CASH OUT';
-            actionBtn.className = 'btn-cashout';
-            actionBtn.disabled = false;
+            btnGroupNormal.classList.add('hidden');
+            btnGroupFlying.classList.remove('hidden');
+            btnCashoutHalf.disabled = false;
+            btnCashoutHalf.className = 'btn-cashout-half';
+            btnCashoutHalf.textContent = 'TARIK 50%';
+            btnCashoutFull.disabled = false;
+            btnCashoutFull.className = 'btn-cashout-full';
+            btnCashoutFull.textContent = 'TARIK FULL';
         } else {
+            btnGroupNormal.classList.remove('hidden');
+            btnGroupFlying.classList.add('hidden');
             actionBtn.textContent = 'TUNGGU RONDE BERIKUTNYA';
             actionBtn.className = 'btn-disabled';
             actionBtn.disabled = true;
         }
-
+ 
         function gameLoop(currentTime) {
             if (gameState !== 'flying') return;
-
+ 
             const elapsedTime = (currentTime - startTime) / 1000;
             currentMultiplier = Math.max(1.00, Math.pow(1.06, elapsedTime * 2));
-
+ 
             if (currentMultiplier >= crashPoint) {
                 currentMultiplier = crashPoint;
                 crashGame();
             } else {
                 multiplierEl.textContent = currentMultiplier.toFixed(2) + 'x';
-
+ 
                 if (betPlacedForNextRound && !isCashedOut) {
+                    if (!isHalfCashedOut) {
+                        btnCashoutHalf.textContent = `TARIK 50% ($${(currentBet * 0.5 * currentMultiplier).toFixed(2)})`;
+                    }
+                    btnCashoutFull.textContent = `TARIK FULL ($${(currentBet * currentMultiplier).toFixed(2)})`;
                     currentProfitEl.textContent = `+$${((currentBet * currentMultiplier) - currentBet).toFixed(2)}`;
                 }
-
+ 
                 animationFrameId = requestAnimationFrame(gameLoop);
             }
         }
-
+ 
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 
     async function crashGame() {
         gameState = 'crashed';
         document.body.className = 'crashed';
-
+ 
         multiplierEl.textContent = currentMultiplier.toFixed(2) + 'x';
         multiplierEl.classList.add('crashed');
         statusMessageEl.textContent = 'CRASHED!';
-
+ 
+        btnGroupNormal.classList.remove('hidden');
+        btnGroupFlying.classList.add('hidden');
+ 
         actionBtn.textContent = 'TUNGGU RONDE BERIKUTNYA';
         actionBtn.className = 'btn-disabled';
         actionBtn.disabled = true;
-
+ 
         if (betPlacedForNextRound && !isCashedOut) {
             currentProfitEl.textContent = `-$${currentBet.toFixed(2)}`;
             currentProfitEl.style.color = '#ff4d4d';
-
+ 
             if (currentBetId) {
                 try {
                     await fetch(`${API_BASE}/api/crash/`, {

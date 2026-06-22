@@ -84,7 +84,13 @@
                 </div>
                 
                 <div class="action-section">
-                    <button id="action-btn" class="btn-primary">PLACE BET</button>
+                    <div id="btn-group-normal" style="flex: 2; display: flex; width: 100%;">
+                        <button id="action-btn" class="btn-primary" style="width: 100%;">PLACE BET</button>
+                    </div>
+                    <div id="btn-group-flying" class="hidden btn-group">
+                        <button id="btn-cashout-half" class="btn-cashout-half">CASH OUT 50%</button>
+                        <button id="btn-cashout-full" class="btn-cashout-full">CASH OUT</button>
+                    </div>
                     <div class="profit-container">
                         <span class="label">Profit</span>
                         <span id="current-profit" class="value">$0.00</span>

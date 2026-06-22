@@ -98,18 +98,53 @@ def api_cashout(request):
     data = json.loads(request.body)
     bet_id = data.get('bet_id')
     multiplier = Decimal(str(data.get('multiplier', 0)))
+    percentage = int(data.get('percentage', 100))
     try:
         bet = Bet.objects.get(id=bet_id, user=request.user)
     except Bet.DoesNotExist:
         return JsonResponse({'error': 'Taruhan tidak ditemukan.'}, status=404)
-    profit = bet.bet_amount * multiplier
-    bet.multiplier = multiplier
-    bet.profit = profit - bet.bet_amount
-    bet.save()
+    
+    original_amount = bet.bet_amount
     user = request.user
-    user.balance += profit
-    user.save()
-    return JsonResponse({'success': True, 'new_balance': float(user.balance), 'profit': float(profit - bet.bet_amount)})
+    
+    if percentage == 50:
+        cashout_amount = original_amount * Decimal('0.5')
+        remaining_amount = original_amount - cashout_amount
+        winnings = cashout_amount * multiplier
+        profit_half = winnings - cashout_amount
+        
+        # Update current bet to represent the cashed out 50%
+        bet.bet_amount = cashout_amount
+        bet.multiplier = multiplier
+        bet.profit = profit_half
+        bet.save()
+        
+        # Create a new active bet representing the remaining 50%
+        new_bet = Bet.objects.create(
+            user=user,
+            bet_amount=remaining_amount,
+            multiplier=Decimal('0.00'),
+            profit=Decimal('0.00')
+        )
+        
+        # Update user balance
+        user.balance += winnings
+        user.save()
+        
+        return JsonResponse({
+            'success': True,
+            'new_balance': float(user.balance),
+            'profit': float(profit_half),
+            'active_bet_id': new_bet.id
+        })
+    else:
+        profit = original_amount * multiplier
+        bet.multiplier = multiplier
+        bet.profit = profit - original_amount
+        bet.save()
+        user.balance += profit
+        user.save()
+        return JsonResponse({'success': True, 'new_balance': float(user.balance), 'profit': float(profit - original_amount)})
 
 
 @login_required
