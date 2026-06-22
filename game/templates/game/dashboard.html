@@ -1,0 +1,294 @@
+{% extends 'game/base.html' %}
+{% load static %}
+{% block title %}Dashboard - PARMADTIC{% endblock %}
+{% block content %}
+<div class="dashboard-layout" style="background: radial-gradient(ellipse at bottom, #0d1520 0%, #090a0f 100%); min-height: 100vh;">
+    <!-- Header -->
+    <header class="dash-header">
+        <div class="brand">PARMADTIC</div>
+        <div class="dash-balance-pill">$ <span id="dash-balance">{{ request.user.balance }}</span></div>
+        <nav class="dash-nav">
+            <a href="{% url 'game' %}">🚀 Main</a>
+            <a href="{% url 'dashboard' %}" class="active">📊 Dashboard</a>
+            <a href="{% url 'logout' %}" class="logout">Keluar</a>
+        </nav>
+    </header>
+
+    <!-- Content -->
+    <div class="dash-content">
+        <div class="dash-tabs">
+            <button class="dash-tab active" onclick="showTab('deposit')">💰 Deposit</button>
+            <button class="dash-tab" onclick="showTab('withdraw')">💸 Withdraw</button>
+            <button class="dash-tab" onclick="showTab('bet-history')">🎮 Riwayat Bet</button>
+            <button class="dash-tab" onclick="showTab('txn-history')">🧾 Riwayat Transaksi</button>
+            <button class="dash-tab" onclick="showTab('support')">💬 Customer Service</button>
+        </div>
+
+        <!-- DEPOSIT TAB -->
+        <div id="tab-deposit" class="tab-panel active">
+            <div class="panel-card">
+                <h3>💰 Deposit Saldo</h3>
+                <p style="color: rgba(255,255,255,0.5); margin-bottom: 20px; font-size: 0.9rem;">Masukkan jumlah saldo yang ingin Anda tambahkan.</p>
+                <div class="amount-input-row">
+                    <input type="number" id="deposit-amount" placeholder="Jumlah deposit (mis: 50000)" min="1000" step="1000">
+                    <button class="btn-action btn-deposit" onclick="doDeposit()">Deposit</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WITHDRAW TAB -->
+        <div id="tab-withdraw" class="tab-panel">
+            <div class="panel-card">
+                <h3>💸 Withdraw Saldo</h3>
+                <p style="color: rgba(255,255,255,0.5); margin-bottom: 20px; font-size: 0.9rem;">Masukkan jumlah saldo yang ingin Anda tarik.</p>
+                <div class="amount-input-row">
+                    <input type="number" id="withdraw-amount" placeholder="Jumlah withdraw (mis: 10000)" min="1000" step="1000">
+                    <button class="btn-action btn-withdraw" onclick="doWithdraw()">Withdraw</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BET HISTORY TAB -->
+        <div id="tab-bet-history" class="tab-panel">
+            <div class="panel-card">
+                <h3>🎮 Riwayat Bet</h3>
+                <div class="table-wrapper">
+                    {% if bets %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Taruhan</th>
+                                <th>Multiplier</th>
+                                <th>Profit/Loss</th>
+                                <th>Tanggal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bet in bets %}
+                            <tr>
+                                <td style="color: rgba(255,255,255,0.3);">{{ forloop.counter }}</td>
+                                <td style="color: #00c6ff; font-weight: 600;">${{ bet.bet_amount }}</td>
+                                <td>
+                                    {% if bet.multiplier > 0 %}
+                                    <span style="color: #2ecc71;">{{ bet.multiplier }}x</span>
+                                    {% else %}
+                                    <span style="color: #e74c3c;">CRASH</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if bet.profit > 0 %}
+                                    <span style="color: #2ecc71;">+${{ bet.profit }}</span>
+                                    {% elif bet.profit < 0 %}
+                                    <span style="color: #e74c3c;">${{ bet.profit }}</span>
+                                    {% else %}
+                                    <span style="color: rgba(255,255,255,0.4);">-</span>
+                                    {% endif %}
+                                </td>
+                                <td style="color: rgba(255,255,255,0.4); font-size: 0.82rem;">{{ bet.created_at|date:"d M Y, H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">📭 Belum ada riwayat bet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- TRANSACTION HISTORY TAB -->
+        <div id="tab-txn-history" class="tab-panel">
+            <div class="panel-card">
+                <h3>🧾 Riwayat Transaksi</h3>
+                <div class="table-wrapper">
+                    {% if transactions %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Jenis</th>
+                                <th>Jumlah</th>
+                                <th>Status</th>
+                                <th>Tanggal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tx in transactions %}
+                            <tr>
+                                <td style="color: rgba(255,255,255,0.3);">{{ forloop.counter }}</td>
+                                <td>
+                                    {% if tx.transaction_type == 'deposit' %}
+                                    <span style="color: #2ecc71;">⬆ Deposit</span>
+                                    {% else %}
+                                    <span style="color: #9b59b6;">⬇ Withdraw</span>
+                                    {% endif %}
+                                </td>
+                                <td style="font-weight: 600;">${{ tx.amount }}</td>
+                                <td>
+                                    <span class="badge badge-{{ tx.status }}">{{ tx.get_status_display }}</span>
+                                </td>
+                                <td style="color: rgba(255,255,255,0.4); font-size: 0.82rem;">{{ tx.created_at|date:"d M Y, H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">📭 Belum ada riwayat transaksi.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTOMER SERVICE TAB -->
+        <div id="tab-support" class="tab-panel">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- Kirim Tiket -->
+                <div class="panel-card">
+                    <h3>💬 Kirim Tiket</h3>
+                    <div class="ticket-form">
+                        <label class="form-label" for="ticket-subject">Subjek</label>
+                        <input type="text" id="ticket-subject" placeholder="Masalah yang ingin dilaporkan">
+                        <label class="form-label" for="ticket-message">Pesan</label>
+                        <textarea id="ticket-message" placeholder="Ceritakan masalah Anda secara detail..."></textarea>
+                        <button class="btn-action btn-ticket" onclick="submitTicket()">Kirim Tiket</button>
+                    </div>
+                </div>
+
+                <!-- Tiket Saya -->
+                <div class="panel-card">
+                    <h3>📋 Tiket Saya</h3>
+                    {% if tickets %}
+                    <div class="table-wrapper" style="max-height: 350px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Subjek</th>
+                                    <th>Status</th>
+                                    <th>Tanggal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ticket in tickets %}
+                                <tr onclick="showTicketDetail('{{ ticket.subject|escapejs }}', '{{ ticket.message|escapejs }}', '{{ ticket.reply|escapejs }}', '{{ ticket.status }}')" style="cursor:pointer;">
+                                    <td>{{ ticket.subject }}</td>
+                                    <td><span class="badge badge-{{ ticket.status }}">{{ ticket.get_status_display }}</span></td>
+                                    <td style="color: rgba(255,255,255,0.4); font-size: 0.82rem;">{{ ticket.created_at|date:"d M Y" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">📭 Belum ada tiket.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" style="display:none;"></div>
+
+<!-- Ticket Detail Modal -->
+<div id="ticket-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;">
+    <div style="background:#0b0c10; border:1px solid rgba(0,105,148,0.4); border-radius:16px; padding:28px; max-width:500px; width:90%;">
+        <h3 id="modal-subject" style="margin:0 0 16px; color:#fff;"></h3>
+        <div style="color:rgba(255,255,255,0.5); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Pesan Anda</div>
+        <p id="modal-message" style="color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.04); padding:12px; border-radius:8px; margin:0 0 16px;"></p>
+        <div style="color:rgba(255,255,255,0.5); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Balasan Admin</div>
+        <p id="modal-reply" style="color:rgba(255,255,255,0.8); background:rgba(0,105,148,0.07); padding:12px; border-radius:8px; margin:0 0 20px;"></p>
+        <button onclick="document.getElementById('ticket-modal').style.display='none'" style="padding:10px 24px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; cursor:pointer; font-family:'Outfit',sans-serif;">Tutup</button>
+    </div>
+</div>
+
+<script>
+    const CSRF = '{{ csrf_token }}';
+    const API = '';
+
+    function showTab(name) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    function showToast(msg, isError = false) {
+        const t = document.getElementById('toast');
+        t.className = isError ? 'error-toast' : 'success-toast';
+        t.textContent = msg;
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
+
+    function updateBalance(newBalance) {
+        document.getElementById('dash-balance').textContent = parseFloat(newBalance).toFixed(2);
+    }
+
+    async function doDeposit() {
+        const amount = parseFloat(document.getElementById('deposit-amount').value);
+        if (isNaN(amount) || amount <= 0) return showToast('Masukkan jumlah yang valid.', true);
+        const res = await fetch('/api/deposit/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ amount })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(`✅ Deposit $${amount.toFixed(2)} berhasil!`);
+            updateBalance(data.new_balance);
+            document.getElementById('deposit-amount').value = '';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.error || 'Gagal deposit.', true);
+        }
+    }
+
+    async function doWithdraw() {
+        const amount = parseFloat(document.getElementById('withdraw-amount').value);
+        if (isNaN(amount) || amount <= 0) return showToast('Masukkan jumlah yang valid.', true);
+        const res = await fetch('/api/withdraw/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ amount })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(`✅ Withdraw $${amount.toFixed(2)} berhasil!`);
+            updateBalance(data.new_balance);
+            document.getElementById('withdraw-amount').value = '';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.error || 'Gagal withdraw.', true);
+        }
+    }
+
+    async function submitTicket() {
+        const subject = document.getElementById('ticket-subject').value.trim();
+        const message = document.getElementById('ticket-message').value.trim();
+        if (!subject || !message) return showToast('Subjek dan pesan tidak boleh kosong.', true);
+        const res = await fetch('/api/ticket/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ subject, message })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast('✅ Tiket berhasil dikirim!');
+            document.getElementById('ticket-subject').value = '';
+            document.getElementById('ticket-message').value = '';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.error || 'Gagal mengirim tiket.', true);
+        }
+    }
+
+    function showTicketDetail(subject, message, reply, status) {
+        document.getElementById('modal-subject').textContent = subject;
+        document.getElementById('modal-message').textContent = message;
+        document.getElementById('modal-reply').textContent = reply || '(Belum ada balasan dari admin)';
+        document.getElementById('ticket-modal').style.display = 'flex';
+    }
+</script>
+{% endblock %}

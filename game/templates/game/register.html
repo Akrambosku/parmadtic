@@ -1,0 +1,30 @@
+{% extends 'game/base.html' %}
+{% block title %}Register - PARMADTIC{% endblock %}
+{% block content %}
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <h1>PARMADTIC</h1>
+            <p>Buat akun baru</p>
+        </div>
+        {% if error %}<div class="error-msg">{{ error }}</div>{% endif %}
+        <form method="POST" action="{% url 'register' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Pilih username unik" autocomplete="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Buat password" autocomplete="new-password" required>
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">Konfirmasi Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Ulangi password" autocomplete="new-password" required>
+            </div>
+            <button type="submit" class="btn-auth">Daftar</button>
+        </form>
+        <div class="auth-link">Sudah punya akun? <a href="{% url 'login' %}">Masuk</a></div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PARMADTIC - Spaceman Game</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Space Background -->
+        <div id="space-bg">
+            <div class="stars"></div>
+            <div class="stars2"></div>
+            <div class="stars3"></div>
+        </div>
+
+        <header class="top-bar">
+            <div class="brand">
+                <h1>PARMADTIC</h1>
+            </div>
+            <div class="wallet">
+                <span class="currency">$</span>
+                <span id="balance">1000.00</span>
+            </div>
+        </header>
+
+        <div class="history-bar">
+            <div id="history-list">
+                <!-- History items injected here -->
+            </div>
+        </div>
+
+        <main class="game-container">
+            <div class="game-view">
+                <div class="multiplier-container">
+                    <div id="multiplier">1.00x</div>
+                    <div id="status-message">Waiting for next round...</div>
+                </div>
+
+                <div id="spaceman-container">
+                    <svg class="spaceman" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="visorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#006994" />
+                                <stop offset="100%" stop-color="#0b0c10" />
+                            </linearGradient>
+                            <linearGradient id="suitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ffffff" />
+                                <stop offset="100%" stop-color="#EADDCA" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Jetpack -->
+                        <rect x="20" y="40" width="60" height="50" rx="10" fill="#0b0c10" stroke="#006994" stroke-width="2"/>
+                        <!-- Helmet -->
+                        <circle cx="50" cy="35" r="25" fill="url(#suitGrad)"/>
+                        <circle cx="50" cy="35" r="18" fill="url(#visorGrad)"/>
+                        <!-- Visor reflection -->
+                        <path d="M 38 25 Q 50 18 62 25" stroke="#EADDCA" stroke-width="2" fill="none" opacity="0.6" stroke-linecap="round"/>
+                        <!-- Body -->
+                        <rect x="35" y="60" width="30" height="40" rx="8" fill="url(#suitGrad)"/>
+                        <!-- Arms -->
+                        <rect x="25" y="65" width="10" height="30" rx="5" fill="url(#suitGrad)" transform="rotate(15 30 65)"/>
+                        <rect x="65" y="65" width="10" height="30" rx="5" fill="url(#suitGrad)" transform="rotate(-15 70 65)"/>
+                        <!-- Exhaust flame -->
+                        <path id="flame" class="hidden" d="M 40 100 Q 50 130 60 100 Z" fill="#006994" opacity="0.8"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="bet-section">
+                    <div class="bet-input-wrapper">
+                        <button class="adjust-btn" id="btn-half">1/2</button>
+                        <div class="input-container">
+                            <span>$</span>
+                            <input type="number" id="bet-input" value="10.00" min="1" step="1">
+                        </div>
+                        <button class="adjust-btn" id="btn-double">x2</button>
+                    </div>
+                </div>
+                
+                <div class="action-section">
+                    <button id="action-btn" class="btn-primary">PLACE BET</button>
+                    <div class="profit-container">
+                        <span class="label">Profit</span>
+                        <span id="current-profit" class="value">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
